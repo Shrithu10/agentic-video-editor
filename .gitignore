@@ -1,0 +1,23 @@
+# Python
+backend/venv/
+backend/__pycache__/
+backend/**/__pycache__/
+backend/*.pyc
+backend/agentic_editor.db
+backend/uploads/
+backend/outputs/
+backend/thumbnails/
+
+# Node
+frontend/node_modules/
+frontend/dist/
+
+# Env
+backend/.env
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Claude
+.claude/
