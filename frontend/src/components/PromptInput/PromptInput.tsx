@@ -21,7 +21,7 @@ export function PromptInput() {
 
   const {
     currentSession, isProcessing, isAnalyzing,
-    setPrompt, prompt, setProcessing, resetAgents, setActiveTab
+    setPrompt, prompt, setProcessing, resetAgents, setActiveTab, controls
   } = useAppStore()
 
   // Allow editing once we have a session and are not actively processing.
@@ -32,13 +32,22 @@ export function PromptInput() {
   const handleSubmit = async () => {
     if (!localPrompt.trim() || !currentSession || !canEdit) return
 
-    setPrompt(localPrompt)
+    // Append active AI filter flags to the prompt so the pipeline knows about them
+    const extras: string[] = []
+    if (controls.removeFiller)        extras.push('remove filler words and um/uh sounds')
+    if (controls.highlightEmotional)  extras.push('highlight emotional moments')
+    if (controls.addSubtitles)        extras.push('add subtitles')
+    const fullPrompt = extras.length
+      ? `${localPrompt.trim()}. Additionally: ${extras.join(', ')}.`
+      : localPrompt.trim()
+
+    setPrompt(fullPrompt)
     setProcessing(true)
     resetAgents()
     setActiveTab('workflow')
 
     try {
-      await api.startEdit(currentSession.id, localPrompt)
+      await api.startEdit(currentSession.id, fullPrompt)
     } catch (e: unknown) {
       setProcessing(false)
       console.error('Edit error:', e)

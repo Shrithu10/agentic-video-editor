@@ -1,9 +1,8 @@
 import { useRef, useState, useEffect, useCallback } from 'react'
 import {
   Play, Pause, Volume2, VolumeX, Download,
-  Maximize, RefreshCw, Loader2
+  Maximize, Loader2
 } from 'lucide-react'
-import { motion, AnimatePresence } from 'framer-motion'
 import { useAppStore } from '../../stores/appStore'
 import { api } from '../../hooks/useApi'
 import clsx from 'clsx'
@@ -23,12 +22,12 @@ export function VideoPlayer({ onTimeUpdate, onDurationChange }: Props) {
   const [loading, setLoading] = useState(false)
   const [showOutput, setShowOutput] = useState(false)
 
-  const { currentSession, outputUrl, isProcessing, isAnalyzing } = useAppStore()
+  const { currentSession, outputUrl, isProcessing, controls } = useAppStore()
 
   const videoSrc = outputUrl
     ? outputUrl
     : currentSession?.video_path
-    ? currentSession.video_path          // already a /uploads/... URL
+    ? currentSession.video_path
     : null
 
   useEffect(() => {
@@ -37,6 +36,26 @@ export function VideoPlayer({ onTimeUpdate, onDurationChange }: Props) {
 
   const displaySrc = showOutput && outputUrl ? outputUrl : videoSrc
 
+  // ── Apply controls panel → video element ────────────────────────────────────
+  // Volume from controls panel
+  useEffect(() => {
+    const v = videoRef.current
+    if (!v) return
+    v.volume = Math.max(0, Math.min(2, controls.volume))
+    setVolume(controls.volume)
+  }, [controls.volume])
+
+  // CSS visual filters: brightness, contrast, saturation, warmth
+  const videoFilter = [
+    `brightness(${1 + controls.brightness})`,
+    `contrast(${controls.contrast})`,
+    `saturate(${controls.saturation})`,
+    controls.warmth !== 0
+      ? `hue-rotate(${-controls.warmth * 18}deg) sepia(${Math.abs(controls.warmth) * 0.3})`
+      : '',
+  ].filter(Boolean).join(' ')
+
+  // ── Playback handlers ────────────────────────────────────────────────────────
   const handleTimeUpdate = () => {
     const t = videoRef.current?.currentTime || 0
     setCurrentTime(t)
@@ -84,16 +103,28 @@ export function VideoPlayer({ onTimeUpdate, onDurationChange }: Props) {
       {/* Video */}
       <div className="relative flex-1 min-h-0 bg-dark-950 flex items-center justify-center overflow-hidden">
         {displaySrc ? (
-          <video
-            ref={videoRef}
-            src={displaySrc}
-            className="max-h-full max-w-full"
-            onTimeUpdate={handleTimeUpdate}
-            onDurationChange={handleDurationChange}
-            onWaiting={() => setLoading(true)}
-            onCanPlay={() => setLoading(false)}
-            onEnded={() => setPlaying(false)}
-          />
+          <>
+            <video
+              ref={videoRef}
+              src={displaySrc}
+              className="max-h-full max-w-full"
+              style={{ filter: videoFilter }}
+              onTimeUpdate={handleTimeUpdate}
+              onDurationChange={handleDurationChange}
+              onWaiting={() => setLoading(true)}
+              onCanPlay={() => setLoading(false)}
+              onEnded={() => setPlaying(false)}
+            />
+            {/* Vignette overlay */}
+            {controls.vignette > 0 && (
+              <div
+                className="absolute inset-0 pointer-events-none rounded-xl"
+                style={{
+                  background: `radial-gradient(ellipse at center, transparent ${Math.round((1 - controls.vignette) * 60)}%, rgba(0,0,0,${(controls.vignette * 0.85).toFixed(2)}) 100%)`,
+                }}
+              />
+            )}
+          </>
         ) : (
           <div className="flex flex-col items-center gap-3 text-dark-600">
             <div className="w-16 h-16 rounded-2xl bg-dark-800 border border-dark-700 flex items-center justify-center">
@@ -113,9 +144,7 @@ export function VideoPlayer({ onTimeUpdate, onDurationChange }: Props) {
         {/* Processing overlay */}
         {isProcessing && (
           <div className="absolute inset-0 bg-black/70 flex flex-col items-center justify-center gap-3">
-            <div className="relative">
-              <Loader2 className="w-10 h-10 text-accent-cyan animate-spin" />
-            </div>
+            <Loader2 className="w-10 h-10 text-accent-cyan animate-spin" />
             <p className="text-white text-sm font-medium">AI Agents Processing...</p>
             <p className="text-dark-400 text-xs">Your edited video will appear here</p>
           </div>
@@ -142,6 +171,15 @@ export function VideoPlayer({ onTimeUpdate, onDurationChange }: Props) {
             >
               Edited
             </button>
+          </div>
+        )}
+
+        {/* Active filter indicator */}
+        {(controls.brightness !== 0 || controls.contrast !== 1 ||
+          controls.saturation !== 1 || controls.warmth !== 0 || controls.vignette > 0) && (
+          <div className="absolute bottom-3 left-3 flex items-center gap-1 bg-black/60 rounded-full px-2 py-0.5">
+            <span className="w-1.5 h-1.5 rounded-full bg-accent-cyan" />
+            <span className="text-[10px] text-accent-cyan font-mono">filters active</span>
           </div>
         )}
       </div>
@@ -185,7 +223,7 @@ export function VideoPlayer({ onTimeUpdate, onDurationChange }: Props) {
               : <Volume2 className="w-3.5 h-3.5" />}
           </button>
           <input
-            type="range" min="0" max="1" step="0.05"
+            type="range" min="0" max="2" step="0.05"
             value={muted ? 0 : volume}
             onChange={(e) => handleVolumeChange(parseFloat(e.target.value))}
             className="w-16 h-1 accent-brand-400"
