@@ -13,9 +13,18 @@ import { useWebSocket } from './hooks/useWebSocket'
 import { useAppStore } from './stores/appStore'
 
 function App() {
-  const { currentSession, activeTab, isAnalyzing } = useAppStore()
+  const { currentSession, activeTab, isAnalyzing, analysis, setAnalysis } = useAppStore()
   const [currentTime, setCurrentTime] = useState(0)
   const [duration, setDuration] = useState(0)
+
+  // When HTML5 video reports a real duration, update the analysis store
+  // so Timeline always has an accurate value even when ffprobe returned 0
+  const handleDurationChange = (d: number) => {
+    setDuration(d)
+    if (d > 0 && analysis && (analysis.duration === 0 || analysis.duration === 60)) {
+      setAnalysis({ ...analysis, duration: d })
+    }
+  }
 
   // Connect WebSocket for the current session
   useWebSocket(currentSession?.id || null)
@@ -51,7 +60,7 @@ function App() {
                   <div className="h-[calc(100%-165px-72px)] min-h-0 p-3 shrink-0">
                     <VideoPlayer
                       onTimeUpdate={setCurrentTime}
-                      onDurationChange={setDuration}
+                      onDurationChange={handleDurationChange}
                     />
                   </div>
 
@@ -91,7 +100,7 @@ function App() {
                 <div className="flex-1 p-3">
                   <VideoPlayer
                     onTimeUpdate={setCurrentTime}
-                    onDurationChange={setDuration}
+                    onDurationChange={handleDurationChange}
                   />
                 </div>
                 <div className="p-3 border-t border-white/5">

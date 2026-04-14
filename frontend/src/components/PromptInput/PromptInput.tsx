@@ -24,8 +24,10 @@ export function PromptInput() {
     setPrompt, prompt, setProcessing, resetAgents, setActiveTab
   } = useAppStore()
 
-  const canEdit = !!currentSession && !isProcessing && !isAnalyzing &&
-                   (currentSession.status === 'ready' || currentSession.status === 'complete')
+  // Allow editing once we have a session and are not actively processing.
+  // We do NOT gate on status === 'ready' because the WebSocket race condition
+  // can leave status stuck at 'analyzing' even after analysis finishes.
+  const canEdit = !!currentSession && !isProcessing && !isAnalyzing
 
   const handleSubmit = async () => {
     if (!localPrompt.trim() || !currentSession || !canEdit) return
@@ -96,9 +98,9 @@ export function PromptInput() {
           onKeyDown={handleKeyDown}
           disabled={!canEdit}
           placeholder={
-            !currentSession ? "Upload a video first..."
-            : isAnalyzing ? "Analysing video..."
-            : isProcessing ? "Processing..."
+            !currentSession  ? 'Upload a video first...'
+            : isProcessing   ? 'Processing...'
+            : isAnalyzing    ? 'Analysing video...'
             : 'Describe how you want to edit this video...'
           }
           rows={2}

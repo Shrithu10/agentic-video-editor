@@ -45,8 +45,10 @@ export function VideoPlayer({ onTimeUpdate, onDurationChange }: Props) {
 
   const handleDurationChange = () => {
     const d = videoRef.current?.duration || 0
-    setDuration(d)
-    onDurationChange(d)
+    if (d && isFinite(d)) {
+      setDuration(d)
+      onDurationChange(d)
+    }
   }
 
   const togglePlay = () => {
